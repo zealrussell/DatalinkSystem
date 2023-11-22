@@ -39,7 +39,7 @@ public class ResultCommon {
         return new ResultCommon(SUCCESS_CODE, "success", data);
     }
 
-    public static ResultCommon error() {
+    public static ResultCommon error(String message) {
         return new ResultCommon(ERROR_CODE, "error");
     }
 

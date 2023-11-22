@@ -25,5 +25,4 @@ class DatalinkSystemApplicationTests {
         System.out.println(neighbor2);
     }
 
-
 }

@@ -84,14 +84,13 @@ public class BroadcastService implements Runnable {
                     Integer k = entry.getKey();
                     DsdvNode v = entry.getValue();
                     DatagramPacket packet = new DatagramPacket(buf, buf.length, address, v.getPort());
-                    log.info("广播了路由表" + v.getPort());
+                    // log.info("广播了路由表" + v.getPort());
                     transportUtil.sendPacket(packet);
                 }
                 log.info("广播了路由表");
                 TimeUnit.MILLISECONDS.sleep(Constants.BROADCAST_PERIOD);
             } catch (IOException e) {
                 log.error("广播失败" + e.getMessage());
-                e.printStackTrace();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

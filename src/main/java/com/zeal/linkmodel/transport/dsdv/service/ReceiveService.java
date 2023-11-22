@@ -97,8 +97,8 @@ public class ReceiveService implements Runnable {
         // 如果只有一跳距离，则添加到邻居节点表
         if (route.getHopCount() == 1) {
             neighborTable.put(neighborTable.size() + 1, new DsdvNode(route.getDestName(), route.getDestAddress()));
+            log.info("添加了新邻居节点 {}", route.getDestName());
         }
-
         log.info("添加了新路由");
     }
 
@@ -233,7 +233,7 @@ public class ReceiveService implements Runnable {
         // 1. 拆包
         UserMessage message = (UserMessage) receivePacket;
         if (message.getDestAddress() == ownNode.getPort()) {
-            log.info("{} 收到消息：{}", ownNode.getName(),message.getData());
+            log.info("{} 收到消息：{}", ownNode.getName(), message.getData());
             // 2. 交给上层处理
             message.getPreRoute().add(String.valueOf(ownNode.getPort()));
         } else {

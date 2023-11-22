@@ -31,8 +31,9 @@ public class DsdvController {
     private BroadcastService broadcastService;
     private ReceiveService receiveService;
     private SendService sendService;
-
     private DsdvNode ownNode;
+    private String name;
+    private int port;
     private TransportUtil transportUtil;
 
     // 路由表，key为目的节点序号，value为路由信息
@@ -47,14 +48,17 @@ public class DsdvController {
     public DsdvController(DsdvNode node, HashMap<Integer, DsdvNode> neighbors) throws SocketException, UnknownHostException {
         this.ownNode = node;
         this.routingTable = new HashMap<>();
-        this.messageQueue = new LinkedBlockingQueue<>();
+        this.messageQueue = new LinkedBlockingQueue<>(15);
         this.neighbors = neighbors;
         init();
     }
 
     private void init() throws SocketException, UnknownHostException {
+        name = ownNode.getName();
+        port = ownNode.getPort();
         initTable();
         transportUtil = new TransportUtil(ownNode.getPort());
+
         broadcastService = new BroadcastService(neighbors, routingTable, transportUtil);
         receiveService = new ReceiveService(ownNode, neighbors, messageQueue, routingTable, transportUtil);
         sendService = new SendService(messageQueue, routingTable, transportUtil);
@@ -65,16 +69,14 @@ public class DsdvController {
      */
     public void initTable() {
         DsdvRoute ownRoute = new DsdvRoute();
-        ownRoute.setDestName(ownNode.getName());
-        ownRoute.setDestAddress(ownNode.getPort());
+        ownRoute.setDestName(name);
+        ownRoute.setDestAddress(port);
         ownRoute.setHopCount(0);
 
         routingTable.put(1, ownRoute);
-
         if (neighbors == null) {
             return;
         }
-
         neighbors.forEach((k,v)->{
             DsdvRoute route = new DsdvRoute();
             route.setDestAddress(v.getPort());
@@ -97,23 +99,25 @@ public class DsdvController {
 
     /**
      * 发送消息
-     * @param destAddress 目的节点序号
+     * @param destAddressName 目的节点序号
      */
-    public void send(String destAddress)  {
-        DsdvRoute destNode = DsdvHelper.findRouteByDesName(routingTable, destAddress);
+    public int send(String destAddressName)  {
+        DsdvRoute destNode = DsdvHelper.findRouteByDesName(routingTable, destAddressName);
         // 1. 如果没有目的节点的路由，则不发送
         if (destNode == null) {
-            System.out.println("没有找到目的节点");
-            return;
+           log.info("{} 没有找到目的节点{}", name, destAddressName);
+            return -1;
         } else {
             try {
-                UserMessage message = new UserMessage(destNode.getDestAddress(), messageData);
-                message.getPreRoute().add(String.valueOf(transportUtil.getPort()));
+                UserMessage message = new UserMessage(port, destNode.getDestAddress(), messageData);
+                message.getPreRoute().add(String.valueOf(port));
                 messageQueue.put(message);
             } catch (InterruptedException e) {
-                log.error("{} 发送消息失败: {}", ownNode.getName(), e.getMessage());
+                log.error("{} 发送消息失败: {}", name, e.getMessage());
+                return -2;
             }
         }
+        return 1;
     }
 
     /**

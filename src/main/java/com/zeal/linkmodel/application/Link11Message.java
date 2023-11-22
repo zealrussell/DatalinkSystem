@@ -30,7 +30,7 @@ public class Link11Message {
     }
 
     private String crc() {
-
+        return "";
     }
 
     private void aes(String message) {

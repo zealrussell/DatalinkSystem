@@ -1,5 +1,6 @@
 package com.zeal.datalinksystem.controller;
 
+import com.zeal.datalinksystem.common.ResultCommon;
 import com.zeal.linkmodel.LinkModel;
 import com.zeal.linkmodel.transport.dsdv.model.DsdvNode;
 import lombok.extern.slf4j.Slf4j;
@@ -29,28 +30,49 @@ public class NodeController {
     private static int NODE_ID = 1;
     static {
         nodeMap = new HashMap<>();
+        modelMap = new HashMap<>();
     }
-    @GetMapping("/add")
-    public String addNode() {
-        log.info("Add a new node!!!");
-        String name = "";
+
+    @GetMapping("/add/{name}/{neighbor}")
+    public ResultCommon addNode(@PathVariable("name") String name, @PathVariable("neighbor") List<String> neighbor) {
+        log.info("Add node {} !!!", name);
         List<String> neighborList = new ArrayList<>();
-        DsdvNode node = new DsdvNode("node" + NODE_ID, 10000 + NODE_ID);
+        if (modelMap.containsKey(name) ) {
+            return ResultCommon.error("node already exists!!!");
+        }
 
-        return "";
+        DsdvNode node = new DsdvNode(name, 10000 + NODE_ID);
+        // LinkModel linkModel = new LinkModel(node);
+        // modelMap.put(name, linkModel);
+        nodeMap.put(name, node);
+
+        return ResultCommon.success("add success!!!");
     }
 
-    @GetMapping("/delete/{id}")
-    public String deleNode(@PathVariable("id") int id) {
-        log.info("Delete a node!!!");
-        nodeMap.remove(id);
-        return "delete success";
+    /**
+     * 删除节点
+     * @param name 节点名称
+     */
+    @GetMapping("/delete/{name}")
+    public ResultCommon deleteNode(@PathVariable("name") String name) {
+        log.info("Delete node {}!!!", name);
+
+        modelMap.get(name).close();
+        modelMap.remove(name);
+        nodeMap.remove(name);
+        return ResultCommon.success("delete success!!!");
     }
 
 
+    /**
+     * 生成消息
+     * @param name 源节点
+     * @param data 消息内容
+     */
     @GetMapping("/make/{name}/{data}")
-    public void makeMessage(@PathVariable("name") String name, @PathVariable("data") String data) {
+    public ResultCommon makeMessage(@PathVariable("name") String name, @PathVariable("data") String data) {
         modelMap.get(name).makeMessage(data);
+        return ResultCommon.success("make success!!!");
     }
 
     /**
@@ -59,23 +81,24 @@ public class NodeController {
      * @param des 目的节点
      */
     @GetMapping("/send/{res}/{des}")
-    public List<String> sendMessage(@PathVariable("res")String res, @PathVariable("des")String des) {
+    public ResultCommon sendMessage(@PathVariable("res")String res, @PathVariable("des")String des) {
         log.info("Send a message!!!");
+        ResultCommon resultCommon = new ResultCommon();
         List<String> routeList = new ArrayList<>();
         modelMap.get(res).sendMessage(des);
         try {
             TimeUnit.MILLISECONDS.sleep(2000);
             routeList = modelMap.get(res).getMessageRoute();
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            return ResultCommon.error(e.getMessage());
         }
-        return routeList;
+        resultCommon.setCode(200);
+        resultCommon.setMsg("send success!!!");
+        resultCommon.setData(routeList);
+
+        return resultCommon;
     }
 
-    @GetMapping("/update")
-    public void updateRoute() {
-
-    }
 
     @GetMapping("/test")
     public void test() {
@@ -98,13 +121,14 @@ public class NodeController {
             linkModel3.init();
             linkModel.printRoute();
             TimeUnit.SECONDS.sleep(10);
-
             linkModel.printRoute();
-            //linkModel2.printRoute();
-            //linkModel3.printRoute();
+            linkModel.makeMessage("Hello3, I am node1");
+            linkModel.sendMessage("node3");
+            TimeUnit.SECONDS.sleep(5);
         } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 
 }

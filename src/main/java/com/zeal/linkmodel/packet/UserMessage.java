@@ -21,10 +21,13 @@ import java.util.List;
 @Data
 public class UserMessage extends Message {
     private List<String> preRoute;
+    private int priority;
     private String data;
-    public UserMessage(int destAddress, String data) {
-        super(destAddress, Type.Data);
+
+    public UserMessage(int srcAddress, int destAddress, String data) {
+        super(srcAddress, destAddress, Type.Data);
         preRoute = new ArrayList<>();
+        priority = 5;
         this.data = data;
     }
     @Override

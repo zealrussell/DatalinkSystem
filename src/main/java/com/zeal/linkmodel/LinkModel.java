@@ -43,7 +43,7 @@ public class LinkModel {
     }
 
     public void init () {
-        controller.printRouteTable();
+        // controller.printRouteTable();
         controller.start();
     }
 
@@ -53,7 +53,7 @@ public class LinkModel {
     }
 
     /**
-     * 发送消息
+     * 发送消息ddddc
      * @param desAddress 目的节点地址
      */
     public void sendMessage(String desAddress) {

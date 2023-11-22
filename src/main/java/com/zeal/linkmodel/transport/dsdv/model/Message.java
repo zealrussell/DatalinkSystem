@@ -13,13 +13,16 @@ import java.io.Serializable;
  */
 @Data
 public abstract class Message implements Serializable {
+    private int srcAddress;
     private int destAddress;
     private int type;
     public Message(){
+        this.srcAddress = 0;
         this.destAddress = 0;
         this.type = 0;
     }
-    public Message(int destAddress, int type) {
+    public Message(int srcAddress, int destAddress, int type) {
+        this.srcAddress = srcAddress;
         this.destAddress = destAddress;
         this.type = type;
     }
