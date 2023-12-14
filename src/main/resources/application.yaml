@@ -1,10 +1,7 @@
 server:
   port: 8090
-spring:
-  datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:file:~/testdb
-  jpa:
-    database: h2
-    hibernate:
-      ddl-auto: update
+
+logging:
+  level:
+    root: INFO
+    com.zeal.com.zeal.linkmodel: DEBUG

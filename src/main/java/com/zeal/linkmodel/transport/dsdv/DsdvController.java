@@ -1,5 +1,6 @@
 package com.zeal.linkmodel.transport.dsdv;
 
+import com.zeal.linkmodel.application.LinkMessage;
 import com.zeal.linkmodel.packet.UserMessage;
 import com.zeal.linkmodel.transport.TransportUtil;
 import com.zeal.linkmodel.transport.dsdv.model.DsdvNode;
@@ -42,14 +43,17 @@ public class DsdvController {
     private HashMap<Integer, DsdvNode> neighbors;
     private BlockingQueue<UserMessage> messageQueue;
 
-    private  UserMessage receivedMessage;
-    private static String messageData = "hello world";
+    private UserMessage receivedMessage;
+    private int priority = 6;
+    private String messageData = "hello world";
 
     public DsdvController(DsdvNode node, HashMap<Integer, DsdvNode> neighbors) throws SocketException, UnknownHostException {
         this.ownNode = node;
         this.routingTable = new HashMap<>();
         this.messageQueue = new LinkedBlockingQueue<>(15);
         this.neighbors = neighbors;
+        this.receivedMessage = new UserMessage();
+
         init();
     }
 
@@ -59,9 +63,9 @@ public class DsdvController {
         initTable();
         transportUtil = new TransportUtil(ownNode.getPort());
 
-        broadcastService = new BroadcastService(neighbors, routingTable, transportUtil);
-        receiveService = new ReceiveService(ownNode, neighbors, messageQueue, routingTable, transportUtil);
-        sendService = new SendService(messageQueue, routingTable, transportUtil);
+        broadcastService = new BroadcastService(ownNode, neighbors, routingTable, transportUtil);
+        receiveService = new ReceiveService(ownNode, neighbors, receivedMessage, routingTable, transportUtil);
+        sendService = new SendService(ownNode, messageQueue, routingTable, transportUtil);
     }
 
     /**
@@ -93,8 +97,10 @@ public class DsdvController {
     /**
      * 生成战术消息
      */
-    public void makeMessage(String data) {
-        messageData = data;
+    public void makeMessage(int priority, String data) {
+        this.priority = priority;
+        this.messageData = LinkMessage.encode(data);
+        log.info("{} 生成战术消息: {}", name, messageData);
     }
 
     /**
@@ -109,7 +115,7 @@ public class DsdvController {
             return -1;
         } else {
             try {
-                UserMessage message = new UserMessage(port, destNode.getDestAddress(), messageData);
+                UserMessage message = new UserMessage(port, destNode.getDestAddress(), messageData, priority);
                 message.getPreRoute().add(String.valueOf(port));
                 messageQueue.put(message);
             } catch (InterruptedException e) {
@@ -146,9 +152,15 @@ public class DsdvController {
     }
 
     public List<String> getMessageRoute() {
-        if (receivedMessage != null) {
+        if (receivedMessage != null && receivedMessage.getPreRoute() != null) {
+            log.info( "路径: {}", receivedMessage.getPreRoute());
             return receivedMessage.getPreRoute();
         }
+        if (receivedMessage == null)
+            log.error("receivedMessage is null");
+        else if (receivedMessage.getPreRoute() == null)
+            log.info(receivedMessage.toString());
+            log.error("receivedMessage.getPreRoute() is null");
         return null;
     }
     public void close() {

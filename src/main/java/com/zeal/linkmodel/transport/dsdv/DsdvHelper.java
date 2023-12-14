@@ -67,13 +67,14 @@ public class DsdvHelper {
     }
 
     public static void printRouteTable(HashMap<Integer, DsdvRoute> routingTable) {
-        System.out.println("路由表：");
-        System.out.println("序号\t目的节点\t目的地址\t下一跳节点\t下一跳地址\t跳数\t序列号\t时间");
 
         synchronized (routingTable) {
+            System.out.format("%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s",
+                    "序号","目的节点","目的地址","下一跳节点","下一跳地址","跳数","序列号","时间");
             routingTable.forEach((k, v) -> {
-                System.out.println(k + "\t" + v.getDestName() + "\t" + v.getDestAddress() + "\t" + v.getNextName() + "\t\t" + v.getNextHop()
-                        + "\t\t" + v.getHopCount() + "\t" + v.getSeqNumber() + "\t" + v.getDate());
+                System.out.format("%-10s%-10s%-10s%-10s%-10s%-10s%-10s%-10s",
+                        k, v.getDestName(), v.getDestAddress(), v.getNextName(),
+                        v.getNextHop(), v.getHopCount(), v.getSeqNumber(), v.getDate());
             });
         }
     }

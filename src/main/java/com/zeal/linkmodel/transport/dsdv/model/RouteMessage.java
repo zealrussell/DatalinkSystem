@@ -16,12 +16,7 @@ public class RouteMessage extends Message{
     HashMap<Integer, DsdvRoute> routeHashMap;
 
     public RouteMessage(int destAddress, HashMap<Integer, DsdvRoute> routeHashMap) {
-        super(destAddress, Type.Route);
+        super(0,destAddress, Type.Route);
         this.routeHashMap = routeHashMap;
-    }
-
-    @Override
-    public byte[] toBytes() {
-        return new byte[0];
     }
 }

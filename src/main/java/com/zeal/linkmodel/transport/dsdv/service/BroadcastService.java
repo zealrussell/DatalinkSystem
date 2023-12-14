@@ -16,6 +16,7 @@ import com.zeal.linkmodel.transport.dsdv.model.DsdvRoute;
 
 import com.zeal.linkmodel.transport.dsdv.model.RouteMessage;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.metamodel.mapping.OwnedValuedModelPart;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class BroadcastService implements Runnable {
 
-
+    private DsdvNode ownNode;
     private Thread broadcast;
     private TransportUtil transportUtil;
     // 路由表
@@ -42,7 +43,8 @@ public class BroadcastService implements Runnable {
 
     private boolean flag = true;
 
-    public BroadcastService(HashMap<Integer, DsdvNode> neighborTable, HashMap<Integer, DsdvRoute> routingTable, TransportUtil transportUtil) {
+    public BroadcastService(DsdvNode ownNode, HashMap<Integer, DsdvNode> neighborTable, HashMap<Integer, DsdvRoute> routingTable, TransportUtil transportUtil) {
+        this.ownNode = ownNode;
         this.routingTable = routingTable;
         this.neighborTable = neighborTable;
         this.transportUtil = transportUtil;
@@ -87,17 +89,17 @@ public class BroadcastService implements Runnable {
                     // log.info("广播了路由表" + v.getPort());
                     transportUtil.sendPacket(packet);
                 }
-                log.info("广播了路由表");
+                log.info("{} 广播了路由表", ownNode.getName());
                 TimeUnit.MILLISECONDS.sleep(Constants.BROADCAST_PERIOD);
             } catch (IOException e) {
-                log.error("广播失败" + e.getMessage());
+                log.error("{} 广播失败: {}", ownNode.getName(), e.getMessage());
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }
     }
     public void start(){
-        log.info("广播服务启动");
+        log.info("{} 广播服务启动", ownNode.getName());
         if (broadcast == null) {
             broadcast = new Thread(this);
             broadcast.start();

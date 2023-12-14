@@ -13,9 +13,9 @@ import java.io.Serializable;
  */
 @Data
 public abstract class Message implements Serializable {
-    private int srcAddress;
-    private int destAddress;
-    private int type;
+    protected int srcAddress;
+    protected int destAddress;
+    protected int type;
     public Message(){
         this.srcAddress = 0;
         this.destAddress = 0;
@@ -26,5 +26,4 @@ public abstract class Message implements Serializable {
         this.destAddress = destAddress;
         this.type = type;
     }
-    public abstract byte[] toBytes();
 }

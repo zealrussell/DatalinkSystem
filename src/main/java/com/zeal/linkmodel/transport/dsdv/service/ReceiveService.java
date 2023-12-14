@@ -1,5 +1,6 @@
 package com.zeal.linkmodel.transport.dsdv.service;
 
+import com.zeal.linkmodel.application.LinkMessage;
 import com.zeal.linkmodel.packet.UserMessage;
 import com.zeal.linkmodel.transport.TransportUtil;
 import com.zeal.linkmodel.transport.dsdv.Constants;
@@ -7,6 +8,7 @@ import com.zeal.linkmodel.transport.dsdv.DsdvHelper;
 import com.zeal.linkmodel.transport.dsdv.Signal;
 import com.zeal.linkmodel.transport.dsdv.model.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.User;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -33,7 +35,7 @@ public class ReceiveService implements Runnable {
     private DsdvNode ownNode;
 
     private Thread receive;
-    private BlockingQueue<UserMessage> messageQueue;
+    private UserMessage receivedMessage;
     private HashMap<Integer, DsdvNode> neighborTable;
 
     private HashMap<Integer, DsdvRoute> routeTable;
@@ -41,10 +43,10 @@ public class ReceiveService implements Runnable {
     private HashMap<Integer, Date> updateTable = new HashMap<Integer, Date>();
     private TransportUtil transportUtil;
 
-    public ReceiveService(DsdvNode node, HashMap<Integer, DsdvNode> neighborTable, BlockingQueue<UserMessage> messageQueue,HashMap<Integer, DsdvRoute> routeTable, TransportUtil transportUtil) {
+    public ReceiveService(DsdvNode node, HashMap<Integer, DsdvNode> neighborTable, UserMessage receivedMessage, HashMap<Integer, DsdvRoute> routeTable, TransportUtil transportUtil) {
         this.ownNode = node;
         this.neighborTable = neighborTable;
-        this.messageQueue = messageQueue;
+        this.receivedMessage = receivedMessage;
         this.routeTable = routeTable;
         this.transportUtil = transportUtil;
     }
@@ -95,11 +97,12 @@ public class ReceiveService implements Runnable {
         routeTable.put(routeTable.size() + 1, newRoute);
 
         // 如果只有一跳距离，则添加到邻居节点表
-        if (route.getHopCount() == 1) {
-            neighborTable.put(neighborTable.size() + 1, new DsdvNode(route.getDestName(), route.getDestAddress()));
-            log.info("添加了新邻居节点 {}", route.getDestName());
+        if (route.getNextName().equals(ownNode.getName()) && route.getHopCount() == 1) {
+            log.info("新表{}", route);
+            neighborTable.put(neighborTable.size() + 1, new DsdvNode(senderInfo.getDestName(), senderInfo.getDestAddress()));
+            log.info("{}添加了新邻居节点: {}", ownNode.getName(), senderInfo.getDestName());
         }
-        log.info("添加了新路由");
+        log.info("{}添加了新路由", ownNode.getName());
     }
 
     /**
@@ -117,7 +120,7 @@ public class ReceiveService implements Runnable {
                 updateTable.put(sender.getDestAddress(), new Date());
             }
         }
-        log.debug("更新路由表时间");
+        log.debug("{}更新路由表时间", ownNode.getName());
     }
 
 
@@ -226,18 +229,28 @@ public class ReceiveService implements Runnable {
             return;
         }
         message.getPreRoute().add(String.valueOf(ownNode.getPort()));
-        messageQueue.add(message);
+        try {
+            transportUtil.send(message, routeTable.get(index).getNextHop());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void handleUserMessage(Message receivePacket) {
         // 1. 拆包
         UserMessage message = (UserMessage) receivePacket;
         if (message.getDestAddress() == ownNode.getPort()) {
-            log.info("{} 收到消息：{}", ownNode.getName(), message.getData());
-            // 2. 交给上层处理
+            message.setData(LinkMessage.decode(message.getData()));
             message.getPreRoute().add(String.valueOf(ownNode.getPort()));
+            log.info("{} 收到战术消息：{}", ownNode.getName(), message.getData());
+            log.info("消息路径为：{}", receivedMessage.getPreRoute());
+            // 2. 交给上层处理
+            synchronized (receivedMessage) {
+                receivedMessage.copy(message);
+            }
         } else {
             // 3. 转发
+            log.info("{} 转发战术消息", ownNode.getName());
             forwardUserMessage(message, message.getDestAddress());
         }
 
@@ -248,7 +261,7 @@ public class ReceiveService implements Runnable {
         Message receivedMessage = (Message) oos2.readObject();
         // 1. 判断是路由消息还是用户消息
         if (receivedMessage.getType() == Type.Data) {
-            log.debug("{} 收到用户消息", ownNode.getName());
+            log.info("{} 收到用户消息", ownNode.getName());
             handleUserMessage(receivedMessage);
         } else if (receivedMessage.getType() == Type.Route) {
             log.debug("{} 收到路由消息", ownNode.getName());
@@ -263,7 +276,6 @@ public class ReceiveService implements Runnable {
                 byte[] receiveData = new byte[2048];
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                 transportUtil.receive(receivePacket);
-                //log.info("{} 收到数据包", ownNode.getName());
                 handle(receivePacket);
                 TimeUnit.MILLISECONDS.sleep(Constants.RECEIVE_PERIOD);
             } catch (IOException | InterruptedException | ClassNotFoundException e) {

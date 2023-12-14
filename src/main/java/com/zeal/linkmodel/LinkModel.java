@@ -48,8 +48,8 @@ public class LinkModel {
     }
 
     // 生成战术消息
-    public void makeMessage(String data) {
-        controller.makeMessage(data);
+    public void makeMessage(int priority ,String data) {
+        controller.makeMessage(priority ,data);
     }
 
     /**
